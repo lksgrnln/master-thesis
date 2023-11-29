@@ -1,0 +1,66 @@
+import torch
+import torch.nn as nn
+from model import MultiLabelClassifier
+from captum.attr import IntegratedGradients
+
+prediction_loss_function = nn.BCEWithLogitsLoss()
+
+
+def _rrr_multilabel_loss(model, sample,
+                         prediction, target_vector,
+                         target_1, target_2,
+                         mask_1, mask_2):
+    _model_1 = MultiLabelClassifier()
+    _model_2 = MultiLabelClassifier()
+    _model_1.load_state_dict(model.state_dict())
+    _model_2.load_state_dict(model.state_dict())
+    _optimizer_1 = torch.optim.Adam(_model_1.parameters(), lr=1e-3)
+    _optimizer_1.zero_grad()
+    _optimizer_2 = torch.optim.Adam(_model_2.parameters(), lr=1e-3)
+    _optimizer_2.zero_grad()
+    full_mask = torch.ones_like(sample)
+    prediction_loss = prediction_loss_function(prediction, target_vector)
+    integrated_gradient_1 = IntegratedGradients(_model_1)
+    gradient_first_digit = integrated_gradient_1.attribute(sample, target=target_1)
+    gradient_first_digit[gradient_first_digit < 0] = 0
+    gradient_counterfactual_1 = integrated_gradient_1.attribute(sample, target=target_2)
+    gradient_counterfactual_1[gradient_counterfactual_1 < 0] = 0
+    integrated_gradient_2 = IntegratedGradients(_model_2)
+    gradient_second_digit = integrated_gradient_2.attribute(sample, target=target_2 + 10)
+    gradient_second_digit[gradient_second_digit < 0] = 0
+    gradient_counterfactual_2 = integrated_gradient_1.attribute(sample, target=10 + target_1)
+    gradient_counterfactual_2[gradient_counterfactual_2 < 0] = 0
+    explanation_loss = torch.sum(gradient_first_digit * mask_1 +
+                                 gradient_second_digit * mask_2 +
+                                 gradient_counterfactual_1 * full_mask +
+                                 gradient_counterfactual_2 * full_mask) / len(gradient_first_digit)
+    loss = prediction_loss + explanation_loss
+
+    return loss, prediction_loss
+
+
+def rrr_multilabel_loss(model, sample,
+                        prediction, target_vector,
+                        target_1, target_2,
+                        mask_1, mask_2):
+    _model = MultiLabelClassifier()
+    _model.load_state_dict(model.state_dict())
+    _optimizer = torch.optim.Adam(_model.parameters(), lr=1e-3)
+    _optimizer.zero_grad()
+    full_mask = torch.ones_like(sample)
+    prediction_loss = prediction_loss_function(prediction, target_vector)
+    integrated_gradient = IntegratedGradients(_model)
+    explanation_loss = torch.zeros_like(sample)
+    for i in range(len(prediction[-1])):
+        gradient_tensor = integrated_gradient.attribute(sample, target=i)
+        gradient_tensor[gradient_tensor < 0] = 0
+        if i < 10:
+            explanation_loss[target_1 == i] += gradient_tensor[target_1 == i] * mask_1[target_1 == i]
+            explanation_loss[target_1 != i] += gradient_tensor[target_1 != i] * full_mask[target_1 != i]
+        else:
+            explanation_loss[target_2 == i - 10] += gradient_tensor[target_2 == i - 10] * mask_2[target_2 == i - 10]
+            explanation_loss[target_2 != i - 10] += gradient_tensor[target_2 != i - 10] * full_mask[target_2 != i - 10]
+
+    loss = prediction_loss + torch.sum(explanation_loss) / len(sample)
+
+    return loss, prediction_loss
