@@ -10,21 +10,20 @@ class MultiLabelMNIST(Dataset):
     def __init__(self, train, transform):
         self.train = train
         self.transform = transform
-        self.mnist_train = datasets.MNIST(root='.', train=True, download=False, transform=transform)
-        self.mnist_test = datasets.MNIST(root='.', train=False, download=False, transform=transform)
+        self.mnist_train = datasets.MNIST(root='.', train=True, download=True, transform=transform)
+        self.mnist_test = datasets.MNIST(root='.', train=False, download=True, transform=transform)
 
     def __len__(self):
         if self.train:
-            return len(self.mnist_train)
+            return int(len(self.mnist_train) / 2)
         else:
-            return len(self.mnist_test)
+            return int(len(self.mnist_test) / 2)
 
     def __getitem__(self, index):
         if self.train:
-            if index == 59999:
-                index = 59998
             first_digit, first_target = self.mnist_train[index][0], self.mnist_train[index][1]
-            second_digit, second_target = self.mnist_train[index + 1][0], self.mnist_train[index + 1][1]
+            second_digit, second_target = self.mnist_train[index + 29999][0], \
+                self.mnist_train[index + 29999][1]
             target = torch.zeros(20)
             target[first_target] = 1
             target[second_target + 10] = 1
@@ -39,10 +38,9 @@ class MultiLabelMNIST(Dataset):
             second_mask = create_mask(permutation_list, first_digit)
 
         else:
-            if index == 9999:
-                index = 9998
             first_digit, first_target = self.mnist_test[index][0], self.mnist_test[index][1]
-            second_digit, second_target = self.mnist_test[index + 1][0], self.mnist_test[index + 1][1]
+            second_digit, second_target = self.mnist_test[index + 4999][0], \
+                self.mnist_test[index + 4999][1]
             target = torch.zeros(20)
             target[first_target] = 1
             target[second_target + 10] = 1

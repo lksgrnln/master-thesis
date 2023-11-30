@@ -1,4 +1,5 @@
 import torch
+import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
 import torch.nn as nn
@@ -11,22 +12,30 @@ from utils import train
 from utils import test
 
 
-model = MultiLabelClassifier()
+torch.manual_seed(64)
+random.seed(64)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+model = MultiLabelClassifier().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
-epochs = 3
-# model.load_state_dict(torch.load('./classifier_xai_v5.pth'))
-# model.eval()
+model_xai = MultiLabelClassifier().to(device)
+model_xai.load_state_dict(model.state_dict())
+optimizer_xai = torch.optim.Adam(model_xai.parameters(), lr=1e-3, weight_decay=1e-5)
+epochs = 200
 
 transform = transforms.ToTensor()
 multilabel_mnist_train_dataset = MultiLabelMNIST(train=True, transform=transform)
 multilabel_mnist_test_dataset = MultiLabelMNIST(train=False, transform=transform)
 multilabel_mnist_train_loader = DataLoader(multilabel_mnist_train_dataset, batch_size=100, shuffle=True)
-multilabel_mnist_test_loader = DataLoader(multilabel_mnist_test_dataset, batch_size=100, shuffle=False)
+multilabel_mnist_test_loader = DataLoader(multilabel_mnist_test_dataset, batch_size=100, shuffle=True)
 
-train_xai(model, epochs, optimizer, multilabel_mnist_train_loader)
-# loss_function = nn.BCEWithLogitsLoss()
-# train(model, epochs, optimizer, loss_function, multilabel_mnist_train_loader)
-test(model, multilabel_mnist_test_loader)
+loss_function = nn.BCEWithLogitsLoss()
+# train(model, epochs, optimizer, loss_function, multilabel_mnist_train_loader, device)
+# test(model, multilabel_mnist_test_loader, device)
+
+train_xai(model_xai, epochs, optimizer_xai, multilabel_mnist_train_loader, device)
+test(model_xai, multilabel_mnist_test_loader, device)
 # test_images, labels, first_target, second_target, first_mask, second_mask = next(iter(multilabel_mnist_test_loader))
 # print(first_target[1])
 # print(second_target[1])
@@ -36,11 +45,11 @@ test(model, multilabel_mnist_test_loader)
 # plt.show()
 # plt.imshow(second_mask[0].reshape(56, 56), cmap='gray')
 # plt.show()
-sigmoid = nn.Sigmoid()
+# sigmoid = nn.Sigmoid()
 # prediction = sigmoid(model(test_images[1].reshape(1,1,56,56)))
 # print(prediction)
 
-integrated_gradient = IntegratedGradients(model)
+# integrated_gradient = IntegratedGradients(model)
 # print(test_images[0].unsqueeze(0).shape)
 # attribution1 = integrated_gradient.attribute(test_images[1].unsqueeze(0), target=2)
 # torch.set_printoptions(threshold=10000)

@@ -42,24 +42,29 @@ def _rrr_multilabel_loss(model, sample,
 def rrr_multilabel_loss(model, sample,
                         prediction, target_vector,
                         target_1, target_2,
-                        mask_1, mask_2):
-    _model = MultiLabelClassifier()
+                        mask_1, mask_2,
+                        device):
+    _model = MultiLabelClassifier().to(device)
     _model.load_state_dict(model.state_dict())
     _optimizer = torch.optim.Adam(_model.parameters(), lr=1e-3)
     _optimizer.zero_grad()
-    full_mask = torch.ones_like(sample)
+    full_mask = torch.ones_like(sample).to(device)
     prediction_loss = prediction_loss_function(prediction, target_vector)
     integrated_gradient = IntegratedGradients(_model)
-    explanation_loss = torch.zeros_like(sample)
+    explanation_loss = torch.zeros_like(sample).to(device)
     for i in range(len(prediction[-1])):
-        gradient_tensor = integrated_gradient.attribute(sample, target=i)
+        gradient_tensor = integrated_gradient.attribute(sample, target=i).to(device)
         gradient_tensor[gradient_tensor < 0] = 0
         if i < 10:
-            explanation_loss[target_1 == i] += gradient_tensor[target_1 == i] * mask_1[target_1 == i]
-            explanation_loss[target_1 != i] += gradient_tensor[target_1 != i] * full_mask[target_1 != i]
+            explanation_loss[target_1 == i] += \
+                gradient_tensor[target_1 == i] * mask_1[target_1 == i]
+            explanation_loss[target_1 != i] += \
+                gradient_tensor[target_1 != i] * full_mask[target_1 != i]
         else:
-            explanation_loss[target_2 == i - 10] += gradient_tensor[target_2 == i - 10] * mask_2[target_2 == i - 10]
-            explanation_loss[target_2 != i - 10] += gradient_tensor[target_2 != i - 10] * full_mask[target_2 != i - 10]
+            explanation_loss[target_2 == i - 10] += \
+                gradient_tensor[target_2 == i - 10] * mask_2[target_2 == i - 10]
+            explanation_loss[target_2 != i - 10] += \
+                gradient_tensor[target_2 != i - 10] * full_mask[target_2 != i - 10]
 
     loss = prediction_loss + torch.sum(explanation_loss) / len(sample)
 

@@ -4,7 +4,7 @@ import torch.nn as nn
 from rrr_multilabel_loss import rrr_multilabel_loss
 
 
-def train(_model, epochs, optimizer, loss_function, data_loader):
+def train(_model, epochs, optimizer, loss_function, data_loader, device):
     num_epochs = epochs
     log = []
     _model.train()
@@ -17,8 +17,8 @@ def train(_model, epochs, optimizer, loss_function, data_loader):
             sample, target, _, _, _, _ = data
             optimizer.zero_grad()
 
-            prediction = _model(sample)
-            loss = loss_function(prediction, target)
+            prediction = _model(sample.to(device))
+            loss = loss_function(prediction, target.to(device))
             loss.backward()
 
             optimizer.step()
@@ -32,9 +32,10 @@ def train(_model, epochs, optimizer, loss_function, data_loader):
         for epoch in log:
             text_file.write(epoch)
         text_file.close()
+    print('finished common training')
 
 
-def train_xai(_model, epochs, optimizer, data_loader):
+def train_xai(_model, epochs, optimizer, data_loader, device):
     num_epochs = epochs
     log = []
     _model.train()
@@ -50,11 +51,12 @@ def train_xai(_model, epochs, optimizer, data_loader):
                 first_mask, second_mask = data
             optimizer.zero_grad()
 
-            prediction = _model(sample)
-            loss, prediction_loss = rrr_multilabel_loss(_model, sample,
-                                                        prediction, target_vector,
-                                                        first_target, second_target,
-                                                        first_mask, second_mask)
+            prediction = _model(sample.to(device))
+            loss, prediction_loss = rrr_multilabel_loss(_model, sample.to(device),
+                                                        prediction.to(device), target_vector.to(device),
+                                                        first_target.to(device), second_target.to(device),
+                                                        first_mask.to(device), second_mask.to(device),
+                                                        device)
             loss.backward()
             optimizer.step()
 
@@ -70,6 +72,7 @@ def train_xai(_model, epochs, optimizer, data_loader):
         for epoch in log:
             text_file.write(epoch)
         text_file.close()
+    print('finished xai training')
 
 
 def create_mask(permutation_list, remove_digit):
@@ -97,7 +100,7 @@ def create_mask(permutation_list, remove_digit):
     return inverse
 
 
-def test(model, test_loader):
+def test(model, test_loader, device):
     both_correct = 0
     single_correct = 0
     total = 0
@@ -105,8 +108,10 @@ def test(model, test_loader):
     with torch.no_grad():
         for data in test_loader:
             sample, _, target_1, target_2, _, _ = data
-            sigmoid = nn.Sigmoid()
-            predictions = sigmoid(model(sample))
+            sigmoid = nn.Sigmoid().to(device)
+            target_1 = target_1.to(device)
+            target_2 = target_2.to(device)
+            predictions = sigmoid(model(sample.to(device)))
             predicted_1 = []
             predicted_2 = []
             for prediction in predictions:
@@ -114,8 +119,8 @@ def test(model, test_loader):
                 _, predict_2 = torch.max(prediction[10:], 0)
                 predicted_1.append(predict_1.item())
                 predicted_2.append(predict_2.item())
-            predicted_1 = torch.Tensor(predicted_1)
-            predicted_2 = torch.Tensor(predicted_2)
+            predicted_1 = torch.Tensor(predicted_1).to(device)
+            predicted_2 = torch.Tensor(predicted_2).to(device)
             total += target_1.size(0)
             both_correct += ((target_1 == predicted_1) & (target_2 == predicted_2)).sum().item()
             single_correct += ((target_1 == predicted_1) | (target_2 == predicted_2)).sum().item()
