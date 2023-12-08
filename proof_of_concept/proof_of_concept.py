@@ -12,8 +12,8 @@ from utils import train
 from utils import test
 
 
-torch.manual_seed(64)
-random.seed(64)
+# torch.manual_seed(64)
+# random.seed(64)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -31,8 +31,8 @@ multilabel_mnist_train_loader = DataLoader(multilabel_mnist_train_dataset, batch
 multilabel_mnist_test_loader = DataLoader(multilabel_mnist_test_dataset, batch_size=100, shuffle=True)
 
 loss_function = nn.BCEWithLogitsLoss()
-# train(model, epochs, optimizer, loss_function, multilabel_mnist_train_loader, device)
-# test(model, multilabel_mnist_test_loader, device)
+train(model, epochs, optimizer, loss_function, multilabel_mnist_train_loader, device)
+test(model, multilabel_mnist_test_loader, device)
 
 train_xai(model_xai, epochs, optimizer_xai, multilabel_mnist_train_loader, device)
 test(model_xai, multilabel_mnist_test_loader, device)

@@ -27,12 +27,14 @@ class MultiLabelClassifier(nn.Module):
         )
         # fully connected layer, output 10 classes
         self.first_linear_layer = nn.Linear(32 * 6 * 6, 512)
-        self.second_linear_layer = nn.Linear(512, 20)
+        self.second_linear_layer = nn.Linear(512, 256)
+        self.third_linear_layer = nn.Linear(256, 11)
 
     def forward(self, x):
         x = self.first_convolutional_layer(x)
         x = self.second_convolutional_layer(x)
         x = x.view(x.size(0), -1)
         x = self.first_linear_layer(x)
-        self.output = self.second_linear_layer(x)
+        x = self.second_linear_layer(x)
+        self.output = self.third_linear_layer(x)
         return self.output

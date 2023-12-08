@@ -1,7 +1,7 @@
 import copy
 import torch
 import torch.nn as nn
-from rrr_multilabel_loss import rrr_multilabel_loss
+from rrr_multilabel_loss import rrr_multilabel_loss_11
 
 
 def train(_model, epochs, optimizer, loss_function, data_loader, device):
@@ -27,8 +27,8 @@ def train(_model, epochs, optimizer, loss_function, data_loader, device):
 
         print('Epoch ' + str(i) + ' Loss: ' + str(running_loss / len(data_loader)))
         log.append('Epoch ' + str(i) + ' Loss: ' + str(running_loss / len(data_loader)) + '\n')
-    torch.save(_model.state_dict(), './classifier_common_deep_learning_20_epochs.pth')
-    with open("runs/test-run_v5.txt", "w") as text_file:
+    torch.save(_model.state_dict(), './classifier_common_deep_learning_11_outputs.pth')
+    with open("runs/test-run_output_11.txt", "w") as text_file:
         for epoch in log:
             text_file.write(epoch)
         text_file.close()
@@ -52,11 +52,11 @@ def train_xai(_model, epochs, optimizer, data_loader, device):
             optimizer.zero_grad()
 
             prediction = _model(sample.to(device))
-            loss, prediction_loss = rrr_multilabel_loss(_model, sample.to(device),
-                                                        prediction.to(device), target_vector.to(device),
-                                                        first_target.to(device), second_target.to(device),
-                                                        first_mask.to(device), second_mask.to(device),
-                                                        device)
+            loss, prediction_loss = rrr_multilabel_loss_11(_model, sample.to(device),
+                                                           prediction.to(device), target_vector.to(device),
+                                                           first_target.to(device), second_target.to(device),
+                                                           first_mask.to(device), second_mask.to(device),
+                                                           device)
             loss.backward()
             optimizer.step()
 
@@ -67,8 +67,8 @@ def train_xai(_model, epochs, optimizer, data_loader, device):
                    '; Prediction Loss: ' + str(running_prediction_loss / len(data_loader)) + '\n')
         print('Epoch ' + str(i) + ' RRR-Loss: ' + str(running_loss / len(data_loader)) +
               '; Prediction Loss: ' + str(running_prediction_loss / len(data_loader)))
-    torch.save(_model.state_dict(), './classifier_xai_v6_3ep.pth')
-    with open("runs/test-run_v6_lr1e-3_3ep_wd1e-5.txt", "w") as text_file:
+    torch.save(_model.state_dict(), './classifier_xai_output_11.pth')
+    with open("runs/test-run_xai_output_11.txt", "w") as text_file:
         for epoch in log:
             text_file.write(epoch)
         text_file.close()
@@ -111,16 +111,11 @@ def test(model, test_loader, device):
             sigmoid = nn.Sigmoid().to(device)
             target_1 = target_1.to(device)
             target_2 = target_2.to(device)
-            predictions = sigmoid(model(sample.to(device)))
-            predicted_1 = []
-            predicted_2 = []
-            for prediction in predictions:
-                _, predict_1 = torch.max(prediction[0:10], 0)
-                _, predict_2 = torch.max(prediction[10:], 0)
-                predicted_1.append(predict_1.item())
-                predicted_2.append(predict_2.item())
-            predicted_1 = torch.Tensor(predicted_1).to(device)
-            predicted_2 = torch.Tensor(predicted_2).to(device)
+            _, predictions = torch.topk(sigmoid(model(sample.to(device))), 2)
+            predicted_1 = predictions[:, 0].to(device)
+            predicted_2 = predictions[:, 1].to(device)
+            predicted_1[predicted_1 == 10] = predicted_2[predicted_1 == 10]
+            predicted_2[predicted_2 == 10] = predicted_1[predicted_2 == 10]
             total += target_1.size(0)
             both_correct += ((target_1 == predicted_1) & (target_2 == predicted_2)).sum().item()
             single_correct += ((target_1 == predicted_1) | (target_2 == predicted_2)).sum().item()

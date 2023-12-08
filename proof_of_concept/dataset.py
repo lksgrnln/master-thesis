@@ -24,9 +24,11 @@ class MultiLabelMNIST(Dataset):
             first_digit, first_target = self.mnist_train[index][0], self.mnist_train[index][1]
             second_digit, second_target = self.mnist_train[index + 29999][0], \
                 self.mnist_train[index + 29999][1]
-            target = torch.zeros(20)
+            target = torch.zeros(11)
             target[first_target] = 1
-            target[second_target + 10] = 1
+            target[second_target] = 1
+            if first_target == second_target:
+                target[10] = 1
             background = torch.zeros(1, 28, 28)
             permutation_list = [first_digit, second_digit,
                                 background, background]
@@ -41,9 +43,11 @@ class MultiLabelMNIST(Dataset):
             first_digit, first_target = self.mnist_test[index][0], self.mnist_test[index][1]
             second_digit, second_target = self.mnist_test[index + 4999][0], \
                 self.mnist_test[index + 4999][1]
-            target = torch.zeros(20)
+            target = torch.zeros(11)
             target[first_target] = 1
-            target[second_target + 10] = 1
+            target[second_target] = 1
+            if first_target == second_target:
+                target[10] = 1
             background = torch.zeros(1, 28, 28)
             permutation_list = [first_digit, second_digit,
                                 background, background]
