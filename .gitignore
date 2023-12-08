@@ -1,4 +1,4 @@
 proof_of_concept/MNIST
 proof_of_concept/__pycache__/
 *.pth
-*.txt
+runs/*.txt
