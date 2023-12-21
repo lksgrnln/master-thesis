@@ -6,10 +6,10 @@ from captum.attr import IntegratedGradients
 prediction_loss_function = nn.BCEWithLogitsLoss()
 
 
-def _rrr_multilabel_loss(model, sample,
-                         prediction, target_vector,
-                         target_1, target_2,
-                         mask_1, mask_2):
+def _rrr_multilabel_loss_v1(model, sample,
+                            prediction, target_vector,
+                            target_1, target_2,
+                            mask_1, mask_2):
     _model_1 = MultiLabelClassifier()
     _model_2 = MultiLabelClassifier()
     _model_1.load_state_dict(model.state_dict())
@@ -39,11 +39,11 @@ def _rrr_multilabel_loss(model, sample,
     return loss, prediction_loss
 
 
-def rrr_multilabel_loss(model, sample,
-                        prediction, target_vector,
-                        target_1, target_2,
-                        mask_1, mask_2,
-                        device):
+def rrr_multilabel_loss_v2(model, sample,
+                           prediction, target_vector,
+                           target_1, target_2,
+                           mask_1, mask_2,
+                           device):
     _model = MultiLabelClassifier().to(device)
     _model.load_state_dict(model.state_dict())
     _optimizer = torch.optim.Adam(_model.parameters(), lr=1e-3)
@@ -71,11 +71,11 @@ def rrr_multilabel_loss(model, sample,
     return loss, prediction_loss
 
 
-def rrr_multilabel_loss_11(model, sample,
-                           prediction, target_vector,
-                           target_1, target_2,
-                           mask_1, mask_2,
-                           device):
+def rrr_multilabel_loss(model, sample,
+                        prediction, target_vector,
+                        target_1, target_2,
+                        mask_1, mask_2,
+                        device):
     _model = MultiLabelClassifier().to(device)
     _model.load_state_dict(model.state_dict())
     prediction_loss = prediction_loss_function(prediction, target_vector)
@@ -86,15 +86,15 @@ def rrr_multilabel_loss_11(model, sample,
     gradient_tensor_2 = integrated_gradient.attribute(sample, target=target_2).to(device)
     gradient_tensor_2[gradient_tensor_2 < 0] = 0
     gradient_tensor_2[target_1 == target_2] = 0
-    gradient_tensor_equal = integrated_gradient.attribute(sample, target=10).to(device)
-    gradient_tensor_equal[gradient_tensor_equal < 0] = 0
-    gradient_tensor_equal[target_1 != target_2] = 0
-    mask_overlay = (mask_1 + mask_2) // 2
+    # gradient_tensor_equal = integrated_gradient.attribute(sample, target=10).to(device)
+    # gradient_tensor_equal[gradient_tensor_equal < 0] = 0
+    # gradient_tensor_equal[target_1 != target_2] = 0
+    # mask_overlay = (mask_1 + mask_2) // 2
 
     explanation_loss = torch.sum(gradient_tensor_1 * mask_1 +
-                                 gradient_tensor_2 * mask_2 +
-                                 gradient_tensor_equal * mask_overlay)
+                                 gradient_tensor_2 * mask_2)  # +
+    #                                 gradient_tensor_equal * mask_overlay)
 
     loss = prediction_loss + explanation_loss / len(sample)
 
-    return loss, prediction_loss
+    return loss, prediction_loss, (explanation_loss / len(sample))
