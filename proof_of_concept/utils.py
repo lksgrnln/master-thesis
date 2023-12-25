@@ -83,10 +83,10 @@ def train_ximl(_model, epochs, optimizer, data_loader, device):
                    '; Prediction Loss: ' + str(running_prediction_loss / len(data_loader)) + '\n')
         print('Epoch ' + str(i) + ' RRR-Loss: ' + str(running_loss / len(data_loader)) +
               '; Prediction Loss: ' + str(running_prediction_loss / len(data_loader)))
-    torch.save(_model.state_dict(), './models/classifier_ximl_output_11' +
+    torch.save(_model.state_dict(), './models/classifier_ximl_output_11_' +
                dt.strftime(dt.now(), "%Y%m%d%H%M%S") + '.pth')
     with open(
-            "./runs/training_loss_ximl_dl" +
+            "./runs/training_loss_ximl_dl_" +
             dt.strftime(dt.now(), "%Y%m%d%H%M%S") +
             ".json", "w") as outfile:
         json.dump(training_loss_per_epoch, outfile, indent=2)
@@ -162,7 +162,12 @@ def test_explanations(model, test_loader, device):
     with torch.no_grad():
         running_similarity = 0
         for data in test_loader:
-            sample, target_vector, target_1, target_2, mask_1, mask_2 = data
+            sample, _, target_1, target_2, mask_1, mask_2 = data
+            sample = sample.to(device)
+            target_1 = target_1.to(device)
+            target_2 = target_2.to(device)
+            mask_1 = mask_1.to(device)
+            mask_2 = mask_2.to(device)
             explanation_target_1 = torch.zeros_like(mask_1).to(device)
             explanation_target_2 = torch.zeros_like(mask_2).to(device)
             index0_1 = mask_1 == 0

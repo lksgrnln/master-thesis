@@ -13,28 +13,27 @@ from utils import test_explanations
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 model = MultiLabelClassifier().to(device)
-# model.load_state_dict(torch.load('',
-#                                  map_location=torch.device('cpu')
-#                                  ))
+model.load_state_dict(torch.load('./models/classifier_common_deep_learning_11_20231222185557.pth',
+                                 map_location=torch.device('cpu')
+                                 ))
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 model_ximl = MultiLabelClassifier().to(device)
-model_ximl.load_state_dict(model.state_dict())
-#     '',
-#     map_location=torch.device('cpu')
-#     ))
+model_ximl.load_state_dict(torch.load('./models/classifier_ximl_output_1120231223064053.pth',
+                                      map_location=torch.device('cpu')
+                                      ))
 optimizer_ximl = torch.optim.Adam(model_ximl.parameters(), lr=1e-3, weight_decay=1e-5)
 epochs = 4
 
 transform = transforms.ToTensor()
 multilabel_mnist_train_dataset = MultiLabelMNIST(train=True, transform=transform)
 multilabel_mnist_test_dataset = MultiLabelMNIST(train=False, transform=transform)
-multilabel_mnist_train_loader = DataLoader(multilabel_mnist_train_dataset, batch_size=100, shuffle=True)
+multilabel_mnist_train_loader = DataLoader(multilabel_mnist_train_dataset, batch_size=20, shuffle=True)
 multilabel_mnist_test_loader = DataLoader(multilabel_mnist_test_dataset, batch_size=100, shuffle=False)
 
 loss_function = nn.BCEWithLogitsLoss()
-train(model, epochs, optimizer, loss_function, multilabel_mnist_train_loader, device)
-test(model, multilabel_mnist_test_loader, device, 'common_dl')
+# train(model, epochs, optimizer, loss_function, multilabel_mnist_train_loader, device)
+# test(model, multilabel_mnist_test_loader, device, 'common_dl')
 train_ximl(model_ximl, epochs, optimizer_ximl, multilabel_mnist_train_loader, device)
-test(model_ximl, multilabel_mnist_test_loader, device, 'ximl_dl')
+# test(model_ximl, multilabel_mnist_test_loader, device, 'ximl_dl')
 test_explanations(model, multilabel_mnist_test_loader, device)
 test_explanations(model_ximl, multilabel_mnist_test_loader, device)
