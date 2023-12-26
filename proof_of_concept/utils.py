@@ -6,6 +6,7 @@ import torch.nn.functional as func
 from datetime import datetime as dt
 from captum.attr import IntegratedGradients
 from rrr_multilabel_loss import rrr_multilabel_loss
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.metrics import classification_report, accuracy_score
 
 
@@ -13,6 +14,7 @@ def train(_model, epochs, optimizer, loss_function, data_loader, device):
     num_epochs = epochs
     log = []
     training_loss_per_epoch = {}
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10)
     _model.train()
 
     for i in range(num_epochs):
@@ -30,8 +32,10 @@ def train(_model, epochs, optimizer, loss_function, data_loader, device):
             optimizer.step()
 
             running_loss += loss.item()
+        scheduler.step(running_loss / len(data_loader))
         training_loss_per_epoch[i] = (running_loss / len(data_loader))
-        print('Epoch ' + str(i) + ' Loss: ' + str(running_loss / len(data_loader)))
+        print('Epoch ' + str(i) + ' Loss: ' + str(running_loss / len(data_loader)) +
+              '; Learning rate: ' + str(optimizer.defaults['lr']))
         log.append('Epoch ' + str(i) + ' Loss: ' + str(running_loss / len(data_loader)) + '\n')
     torch.save(_model.state_dict(), './models/classifier_common_deep_learning_11_' +
                dt.strftime(dt.now(), "%Y%m%d%H%M%S") + '.pth')
@@ -48,6 +52,7 @@ def train_ximl(_model, epochs, optimizer, data_loader, device):
     num_epochs = epochs
     log = []
     training_loss_per_epoch = {}
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10)
     _model.train()
 
     for i in range(num_epochs):
@@ -76,13 +81,15 @@ def train_ximl(_model, epochs, optimizer, data_loader, device):
             running_loss += loss.item()
             running_prediction_loss += prediction_loss.item()
             running_explanation_loss += explanation_loss.item()
+        scheduler.step(running_loss / len(data_loader))
         training_loss_per_epoch[i] = running_loss / len(data_loader), \
             running_prediction_loss / len(data_loader), \
             running_explanation_loss / len(data_loader)
         log.append('Epoch ' + str(i) + ' RRR-Loss: ' + str(running_loss / len(data_loader)) +
                    '; Prediction Loss: ' + str(running_prediction_loss / len(data_loader)) + '\n')
         print('Epoch ' + str(i) + ' RRR-Loss: ' + str(running_loss / len(data_loader)) +
-              '; Prediction Loss: ' + str(running_prediction_loss / len(data_loader)))
+              '; Prediction Loss: ' + str(running_prediction_loss / len(data_loader)) +
+              '; Learning rate: ' + str(optimizer.defaults['lr']))
     torch.save(_model.state_dict(), './models/classifier_ximl_output_11_' +
                dt.strftime(dt.now(), "%Y%m%d%H%M%S") + '.pth')
     with open(
@@ -157,39 +164,72 @@ def test(model, test_loader, device, report_name):
           f'{100 * both_correct / total} %')
 
 
-def test_explanations(model, test_loader, device):
-    model.eval()
-    with torch.no_grad():
-        running_similarity = 0
-        for data in test_loader:
-            sample, _, target_1, target_2, mask_1, mask_2 = data
-            sample = sample.to(device)
-            target_1 = target_1.to(device)
-            target_2 = target_2.to(device)
-            mask_1 = mask_1.to(device)
-            mask_2 = mask_2.to(device)
-            explanation_target_1 = torch.zeros_like(mask_1).to(device)
-            explanation_target_2 = torch.zeros_like(mask_2).to(device)
-            index0_1 = mask_1 == 0
-            index1_1 = mask_1 == 1
-            index0_2 = mask_2 == 0
-            index1_2 = mask_2 == 1
-            explanation_target_1[index0_1] = 1
-            explanation_target_1[index1_1] = 0
-            explanation_target_2[index0_2] = 1
-            explanation_target_2[index1_2] = 0
-            explanation_target_1 = torch.flatten(explanation_target_1)
-            explanation_target_2 = torch.flatten(explanation_target_2)
-            integrated_gradient = IntegratedGradients(model)
-            gradient_tensor_1 = torch.flatten(integrated_gradient.attribute(sample, target=target_1).to(device))
-            gradient_tensor_1[gradient_tensor_1 < 0] = 0
-            gradient_tensor_1 /= gradient_tensor_1.max()
-            gradient_tensor_2 = torch.flatten(integrated_gradient.attribute(sample, target=target_2).to(device))
-            gradient_tensor_2[gradient_tensor_2 < 0] = 0
-            gradient_tensor_2 /= gradient_tensor_2.max()
-            cosine_similarity_1 = func.cosine_similarity(explanation_target_1, gradient_tensor_1, dim=0)
-            cosine_similarity_2 = func.cosine_similarity(explanation_target_2, gradient_tensor_2, dim=0)
-            running_similarity += (cosine_similarity_1 + cosine_similarity_2) / 2
-        similarity = running_similarity / len(test_loader)
-        print(f'cosine similarity of explanations: {similarity.item()}')
-
+def test_explanations(model, test_loader, device, mode):
+    if mode == 'cosine_similarity':
+        model.eval()
+        with torch.no_grad():
+            running_similarity = 0
+            for data in test_loader:
+                sample, _, target_1, target_2, mask_1, mask_2 = data
+                sample = sample.to(device)
+                target_1 = target_1.to(device)
+                target_2 = target_2.to(device)
+                mask_1 = mask_1.to(device)
+                mask_2 = mask_2.to(device)
+                explanation_target_1 = torch.zeros_like(mask_1).to(device)
+                explanation_target_2 = torch.zeros_like(mask_2).to(device)
+                index0_1 = mask_1 == 0
+                index1_1 = mask_1 == 1
+                index0_2 = mask_2 == 0
+                index1_2 = mask_2 == 1
+                explanation_target_1[index0_1] = 1
+                explanation_target_1[index1_1] = 0
+                explanation_target_2[index0_2] = 1
+                explanation_target_2[index1_2] = 0
+                explanation_target_1 = torch.flatten(explanation_target_1)
+                explanation_target_2 = torch.flatten(explanation_target_2)
+                integrated_gradient = IntegratedGradients(model)
+                gradient_tensor_1 = torch.flatten(integrated_gradient.attribute(sample, target=target_1).to(device))
+                gradient_tensor_1[gradient_tensor_1 < 0] = 0
+                gradient_tensor_1 /= gradient_tensor_1.max()
+                gradient_tensor_1[gradient_tensor_1 > 0] = 1
+                gradient_tensor_2 = torch.flatten(integrated_gradient.attribute(sample, target=target_2).to(device))
+                gradient_tensor_2[gradient_tensor_2 < 0] = 0
+                gradient_tensor_2 /= gradient_tensor_2.max()
+                gradient_tensor_2[gradient_tensor_2 > 0] = 1
+                cosine_similarity_1 = func.cosine_similarity(explanation_target_1, gradient_tensor_1, dim=0)
+                cosine_similarity_2 = func.cosine_similarity(explanation_target_2, gradient_tensor_2, dim=0)
+                running_similarity += (cosine_similarity_1 + cosine_similarity_2) / 2
+            similarity = running_similarity / len(test_loader)
+            print(f'cosine similarity of explanations: {similarity.item()}')
+    else:
+        model.eval()
+        with torch.no_grad():
+            count_right_high_activated_pixels = 0
+            count_wrong_high_activated_pixels = 0
+            for data in test_loader:
+                sample, _, target_1, target_2, mask_1, mask_2 = data
+                sample = sample.to(device)
+                target_1 = target_1.to(device)
+                target_2 = target_2.to(device)
+                mask_1 = mask_1.to(device)
+                mask_2 = mask_2.to(device)
+                integrated_gradient = IntegratedGradients(model)
+                gradient_tensor_1 = integrated_gradient.attribute(sample, target=target_1).to(device)
+                gradient_tensor_1[gradient_tensor_1 < 0] = 0
+                for explanation in gradient_tensor_1:
+                    explanation[explanation < (explanation.max() / 3)] = 0
+                gradient_tensor_1[gradient_tensor_1 > 0] = 1
+                count_right_high_activated_pixels += (gradient_tensor_1 * mask_1).sum()
+                count_wrong_high_activated_pixels += (gradient_tensor_1 * mask_2).sum()
+                gradient_tensor_2 = integrated_gradient.attribute(sample, target=target_2).to(device)
+                gradient_tensor_2[gradient_tensor_2 < 0] = 0
+                for explanation in gradient_tensor_2:
+                    explanation[explanation < (explanation.max() / 3)] = 0
+                gradient_tensor_2[gradient_tensor_2 > 0] = 1
+                count_right_high_activated_pixels += (gradient_tensor_2 * mask_2).sum()
+                count_wrong_high_activated_pixels += (gradient_tensor_2 * mask_1).sum()
+            print('number of high activated right pixels: ' + str(count_right_high_activated_pixels.item()))
+            print('number of high activated wrong pixels: ' + str(count_wrong_high_activated_pixels.item()))
+            print('explanation score of classifier: ' + str(count_right_high_activated_pixels /
+                                                            count_wrong_high_activated_pixels))

@@ -85,13 +85,8 @@ def rrr_multilabel_loss(model, sample,
     gradient_tensor_1[gradient_tensor_1 < 0] = 0
     gradient_tensor_2 = integrated_gradient.attribute(sample, target=target_2).to(device)
     gradient_tensor_2[gradient_tensor_2 < 0] = 0
-    # gradient_tensor_2[target_1 == target_2] = 0
-    # gradient_tensor_equal = integrated_gradient.attribute(sample, target=10).to(device)
-    # gradient_tensor_equal[gradient_tensor_equal < 0] = 0
-    # gradient_tensor_equal[target_1 != target_2] = 0
-    # mask_overlay = (mask_1 + mask_2) // 2
     sigmoid = nn.Sigmoid()
-    log_prob = torch.log(sigmoid(prediction)).sum(-1)
+    log_prob = (torch.log(sigmoid(prediction)) * target_vector).sum(-1)
     log_prob_matrix = torch.zeros_like(gradient_tensor_1)
     for i in range(len(gradient_tensor_1)):
         log_prob_matrix[i] = torch.ones_like(gradient_tensor_1)[i] * log_prob[i]
