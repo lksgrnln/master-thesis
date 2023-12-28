@@ -1,3 +1,4 @@
+import copy
 import torch
 import torch.nn as nn
 from model import MultiLabelClassifier
@@ -97,3 +98,39 @@ def rrr_multilabel_loss(model, sample,
     loss = prediction_loss + (explanation_loss / len(sample))
 
     return loss, prediction_loss, (explanation_loss / len(sample))
+
+
+def rrr_loss(model, sample,
+             prediction, target_vector,
+             target_1, target_2,
+             mask_1, mask_2,
+             device):
+    _model = MultiLabelClassifier().to(device)
+    _model.load_state_dict(model.state_dict())
+    prediction_loss = prediction_loss_function(prediction, target_vector)
+    integrated_gradient = IntegratedGradients(_model)
+
+    gradient_tensor_1 = integrated_gradient.attribute(sample, target=target_1).to(device)
+    gradient_tensor_1_positive = copy.deepcopy(gradient_tensor_1)
+    gradient_tensor_1_positive[gradient_tensor_1_positive < 0] = 0
+    gradient_tensor_1_negative = copy.deepcopy(gradient_tensor_1)
+    gradient_tensor_1_negative[gradient_tensor_1_negative > 0] = 0
+    gradient_tensor_2 = integrated_gradient.attribute(sample, target=target_2).to(device)
+    gradient_tensor_2_positive = copy.deepcopy(gradient_tensor_2)
+    gradient_tensor_2_positive[gradient_tensor_2_positive < 0] = 0
+    gradient_tensor_2_negative = copy.deepcopy(gradient_tensor_2)
+    gradient_tensor_2_negative[gradient_tensor_2_negative > 0] = 0
+    sigmoid = nn.Sigmoid()
+    log_prob = (torch.log(sigmoid(prediction)) * target_vector).sum(-1)
+    log_prob_matrix = torch.zeros_like(gradient_tensor_1)
+    for i in range(len(gradient_tensor_1)):
+        log_prob_matrix[i] = torch.ones_like(gradient_tensor_1)[i] * log_prob[i]
+
+    explanation_loss = torch.sum((gradient_tensor_1_positive * mask_1 * log_prob_matrix)**2 +
+                                 (gradient_tensor_1_negative * mask_2 * log_prob_matrix)**2 +
+                                 (gradient_tensor_2_positive * mask_2 * log_prob_matrix)**2 +
+                                 (gradient_tensor_2_negative * mask_1 * log_prob_matrix)**2)
+
+    loss = prediction_loss + 1e2 * explanation_loss
+
+    return loss, prediction_loss, 1e2 * explanation_loss

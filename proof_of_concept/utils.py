@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as func
 from datetime import datetime as dt
 from captum.attr import IntegratedGradients
-from rrr_multilabel_loss import rrr_multilabel_loss
+from rrr_multilabel_loss import rrr_loss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.metrics import classification_report, accuracy_score
 
@@ -68,7 +68,14 @@ def train_ximl(_model, epochs, optimizer, data_loader, device):
             optimizer.zero_grad()
 
             prediction = _model(sample.to(device))
-            loss, prediction_loss, explanation_loss = rrr_multilabel_loss(
+#             loss, prediction_loss, explanation_loss = rrr_multilabel_loss(
+#                 _model, sample.to(device),
+#                 prediction.to(device), target_vector.to(device),
+#                 first_target.to(device), second_target.to(device),
+#                 first_mask.to(device), second_mask.to(device),
+#                 device
+#             )
+            loss, prediction_loss, explanation_loss = rrr_loss(
                 _model, sample.to(device),
                 prediction.to(device), target_vector.to(device),
                 first_target.to(device), second_target.to(device),
@@ -231,5 +238,5 @@ def test_explanations(model, test_loader, device, mode):
                 count_wrong_high_activated_pixels += (gradient_tensor_2 * mask_1).sum()
             print('number of high activated right pixels: ' + str(count_right_high_activated_pixels.item()))
             print('number of high activated wrong pixels: ' + str(count_wrong_high_activated_pixels.item()))
-            print('explanation score of classifier: ' + str(count_right_high_activated_pixels /
-                                                            count_wrong_high_activated_pixels))
+            print('explanation score of classifier: ' + str(count_right_high_activated_pixels.item() /
+                                                            count_wrong_high_activated_pixels.item()))
