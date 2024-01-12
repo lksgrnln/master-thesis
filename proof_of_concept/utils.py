@@ -227,15 +227,15 @@ def test_explanations(model, test_loader, device, mode):
                 for explanation in gradient_tensor_1:
                     explanation[explanation < (explanation.max() / 3)] = 0
                 gradient_tensor_1[gradient_tensor_1 > 0] = 1
-                count_right_high_activated_pixels += (gradient_tensor_1 * mask_1).sum()
-                count_wrong_high_activated_pixels += (gradient_tensor_1 * mask_2).sum()
+                count_right_high_activated_pixels += (gradient_tensor_1 * mask_2).sum()
+                count_wrong_high_activated_pixels += (gradient_tensor_1 * mask_1).sum()
                 gradient_tensor_2 = integrated_gradient.attribute(sample, target=target_2).to(device)
                 gradient_tensor_2[gradient_tensor_2 < 0] = 0
                 for explanation in gradient_tensor_2:
                     explanation[explanation < (explanation.max() / 3)] = 0
                 gradient_tensor_2[gradient_tensor_2 > 0] = 1
-                count_right_high_activated_pixels += (gradient_tensor_2 * mask_2).sum()
-                count_wrong_high_activated_pixels += (gradient_tensor_2 * mask_1).sum()
+                count_right_high_activated_pixels += (gradient_tensor_2 * mask_1).sum()
+                count_wrong_high_activated_pixels += (gradient_tensor_2 * mask_2).sum()
             print('number of high activated right pixels: ' + str(count_right_high_activated_pixels.item()))
             print('number of high activated wrong pixels: ' + str(count_wrong_high_activated_pixels.item()))
             print('explanation score of classifier: ' + str(count_right_high_activated_pixels.item() /
