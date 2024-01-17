@@ -2,6 +2,7 @@ import copy
 import torch
 import torch.nn as nn
 from model import MultiLabelClassifier
+from resnet18 import ResNet
 from captum.attr import IntegratedGradients
 
 prediction_loss_function = nn.BCEWithLogitsLoss()
@@ -105,7 +106,7 @@ def rrr_loss(model, sample,
              target_1, target_2,
              mask_1, mask_2,
              device):
-    _model = MultiLabelClassifier().to(device)
+    _model = ResNet().to(device)
     _model.load_state_dict(model.state_dict())
     prediction_loss = prediction_loss_function(prediction, target_vector)
     integrated_gradient = IntegratedGradients(_model)
@@ -131,6 +132,48 @@ def rrr_loss(model, sample,
                                  (gradient_tensor_2_positive * mask_2 * log_prob_matrix)**2 +
                                  (gradient_tensor_2_negative * mask_1 * log_prob_matrix)**2)
 
-    loss = prediction_loss + 1e2 * explanation_loss
+    loss = prediction_loss + 1e-1 * explanation_loss
 
-    return loss, prediction_loss, 1e2 * explanation_loss
+    return loss, prediction_loss, 1e-1 * explanation_loss
+
+
+def rrr(model, sample,
+        prediction, target_vector,
+        target_1, target_2,
+        mask_1, mask_2,
+        device):
+    _model = MultiLabelClassifier().to(device)
+    _model.load_state_dict(model.state_dict())
+    prediction_loss = prediction_loss_function(prediction, target_vector)
+    integrated_gradient = IntegratedGradients(_model)
+
+    gradient_tensor_1 = integrated_gradient.attribute(sample, target=target_1).to(device)
+    gradient_tensor_1_positive = copy.deepcopy(gradient_tensor_1)
+    gradient_tensor_1_positive[gradient_tensor_1_positive < 0] = 0
+    gradient_tensor_1_negative = copy.deepcopy(gradient_tensor_1)
+    gradient_tensor_1_negative[gradient_tensor_1_negative > 0] = 0
+    gradient_tensor_2 = integrated_gradient.attribute(sample, target=target_2).to(device)
+    gradient_tensor_2_positive = copy.deepcopy(gradient_tensor_2)
+    gradient_tensor_2_positive[gradient_tensor_2_positive < 0] = 0
+    gradient_tensor_2_negative = copy.deepcopy(gradient_tensor_2)
+    gradient_tensor_2_negative[gradient_tensor_2_negative > 0] = 0
+    sigmoid = nn.Sigmoid()
+    target_1_vector = torch.nn.functional.one_hot(target_1, num_classes=11)
+    log_prob_1 = (torch.log(sigmoid(prediction)) * target_1_vector).sum(-1)
+    log_prob_matrix_1 = torch.zeros_like(gradient_tensor_1)
+    for i in range(len(gradient_tensor_1)):
+        log_prob_matrix_1[i] = torch.ones_like(gradient_tensor_1)[i] * log_prob_1[i]
+    target_2_vector = torch.nn.functional.one_hot(target_2, num_classes=11)
+    log_prob_2 = (torch.log(sigmoid(prediction)) * target_2_vector).sum(-1)
+    log_prob_matrix_2 = torch.zeros_like(gradient_tensor_1)
+    for i in range(len(gradient_tensor_1)):
+        log_prob_matrix_2[i] = torch.ones_like(gradient_tensor_1)[i] * log_prob_2[i]
+
+    explanation_loss = torch.sum((gradient_tensor_1_positive * mask_1 * log_prob_matrix_1)**2 +
+                                 (gradient_tensor_1_negative * mask_2 * log_prob_matrix_1)**2 +
+                                 (gradient_tensor_2_positive * mask_2 * log_prob_matrix_2)**2 +
+                                 (gradient_tensor_2_negative * mask_1 * log_prob_matrix_2)**2)
+
+    loss = prediction_loss + 100 * explanation_loss
+
+    return loss, prediction_loss, 100 * explanation_loss

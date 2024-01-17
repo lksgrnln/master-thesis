@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as func
 from datetime import datetime as dt
 from captum.attr import IntegratedGradients
-from rrr_multilabel_loss import rrr_loss
+from rrr_multilabel_loss import rrr
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.metrics import classification_report, accuracy_score
 
@@ -75,7 +75,7 @@ def train_ximl(_model, epochs, optimizer, data_loader, device):
 #                 first_mask.to(device), second_mask.to(device),
 #                 device
 #             )
-            loss, prediction_loss, explanation_loss = rrr_loss(
+            loss, prediction_loss, explanation_loss = rrr(
                 _model, sample.to(device),
                 prediction.to(device), target_vector.to(device),
                 first_target.to(device), second_target.to(device),
@@ -141,7 +141,7 @@ def test(model, test_loader, device, report_name):
         test_set_predictions = torch.zeros(len(test_loader) * len(next(iter(test_loader))[0]), 11)
         for i, data in enumerate(test_loader):
             sample, target_vector, target_1, target_2, _, _ = data
-            test_set_targets[i*100: i*100 + 100] = target_vector
+            test_set_targets[i*len(sample): i*len(sample) + len(sample)] = target_vector
             sigmoid = nn.Sigmoid().to(device)
             target_1 = target_1.to(device)
             target_2 = target_2.to(device)
@@ -150,7 +150,7 @@ def test(model, test_loader, device, report_name):
             if prediction_vector.shape[1] < 11:
                 pad_zeros = 11 - prediction_vector.shape[1]
                 prediction_vector = torch.nn.functional.pad(prediction_vector, (0, pad_zeros), "constant", 0)
-            test_set_predictions[i*100: i*100 + 100] = prediction_vector
+            test_set_predictions[i*len(sample): i*len(sample) + len(sample)] = prediction_vector
             predicted_1 = predictions[:, 0].to(device)
             predicted_2 = predictions[:, 1].to(device)
             predicted_1[predicted_1 == 10] = predicted_2[predicted_1 == 10]
