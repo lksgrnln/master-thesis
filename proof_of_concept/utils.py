@@ -171,7 +171,7 @@ def test(model, test_loader, device, report_name):
           f'{100 * both_correct / total} %')
 
 
-def test_explanations(model, test_loader, device, mode, score):
+def test_explanations(model, test_loader, device, mode, test_score):
     if mode == 'cosine_similarity':
         model.eval()
         with torch.no_grad():
@@ -248,7 +248,7 @@ def test_explanations(model, test_loader, device, mode, score):
             }
             with open(
                     "./runs/multi_label_explanation_score" + "_" +
-                    str(score) + "_" +
+                    str(test_score) + "_" +
                     dt.strftime(dt.now(), "%Y%m%d%H%M%S") +
                     ".json", "w") as outfile:
                 json.dump(score, outfile, indent=2)
