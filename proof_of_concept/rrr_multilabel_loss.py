@@ -174,6 +174,6 @@ def rrr(model, sample,
                                  (gradient_tensor_2_positive * mask_2 * log_prob_matrix_2)**2 +
                                  (gradient_tensor_2_negative * mask_1 * log_prob_matrix_2)**2)
 
-    loss = prediction_loss + 100 * explanation_loss
+    loss = prediction_loss + 1e-1 * (explanation_loss / len(sample))
 
-    return loss, prediction_loss, 100 * explanation_loss
+    return loss, prediction_loss, 1e-1 * (explanation_loss / len(sample))

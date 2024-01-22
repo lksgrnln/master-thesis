@@ -171,7 +171,7 @@ def test(model, test_loader, device, report_name):
           f'{100 * both_correct / total} %')
 
 
-def test_explanations(model, test_loader, device, mode):
+def test_explanations(model, test_loader, device, mode, score):
     if mode == 'cosine_similarity':
         model.eval()
         with torch.no_grad():
@@ -240,3 +240,15 @@ def test_explanations(model, test_loader, device, mode):
             print('number of high activated wrong pixels: ' + str(count_wrong_high_activated_pixels.item()))
             print('explanation score of classifier: ' + str(count_right_high_activated_pixels.item() /
                                                             count_wrong_high_activated_pixels.item()))
+            score = {
+                "high_activated_right_pixels": count_right_high_activated_pixels.item(),
+                "high_activated_wrong_pixels": count_wrong_high_activated_pixels.item(),
+                "explanation_score": (count_right_high_activated_pixels.item() /
+                                      count_wrong_high_activated_pixels.item())
+            }
+            with open(
+                    "./runs/multi_label_explanation_score" + "_" +
+                    str(score) + "_" +
+                    dt.strftime(dt.now(), "%Y%m%d%H%M%S") +
+                    ".json", "w") as outfile:
+                json.dump(score, outfile, indent=2)
