@@ -1,8 +1,8 @@
 import copy
 import torch
 import torch.nn as nn
-from model import MultiLabelClassifier
 from resnet18 import ResNet
+from model import MultiLabelClassifier
 from captum.attr import IntegratedGradients
 
 prediction_loss_function = nn.BCEWithLogitsLoss()
@@ -141,8 +141,11 @@ def rrr(model, sample,
         prediction, target_vector,
         target_1, target_2,
         mask_1, mask_2,
-        device):
-    _model = MultiLabelClassifier().to(device)
+        device, model_type):
+    if model_type == 'MLC':
+        _model = MultiLabelClassifier().to(device)
+    else:
+        _model = ResNet().to(device)
     _model.load_state_dict(model.state_dict())
     prediction_loss = prediction_loss_function(prediction, target_vector)
     integrated_gradient = IntegratedGradients(_model)

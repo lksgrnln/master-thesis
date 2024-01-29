@@ -1,6 +1,8 @@
+import os
 import copy
 import json
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as func
 from datetime import datetime as dt
@@ -48,7 +50,7 @@ def train(_model, epochs, optimizer, loss_function, data_loader, device):
     print('finished common training')
 
 
-def train_ximl(_model, epochs, optimizer, data_loader, device):
+def train_ximl(_model, epochs, optimizer, data_loader, device, model_type):
     num_epochs = epochs
     log = []
     training_loss_per_epoch = {}
@@ -80,7 +82,7 @@ def train_ximl(_model, epochs, optimizer, data_loader, device):
                 prediction.to(device), target_vector.to(device),
                 first_target.to(device), second_target.to(device),
                 first_mask.to(device), second_mask.to(device),
-                device
+                device, model_type
             )
             loss.backward()
             optimizer.step()
@@ -252,3 +254,571 @@ def test_explanations(model, test_loader, device, mode, test_score):
                     dt.strftime(dt.now(), "%Y%m%d%H%M%S") +
                     ".json", "w") as outfile:
                 json.dump(score, outfile, indent=2)
+
+
+def mean_and_standard_deviation():
+    report_dict_dl = {
+        "0": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "1": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "2": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "3": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "4": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "5": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "6": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "7": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "8": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "9": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "10": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "macro avg": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "weighted avg": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "samples avg": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "accuracy_score": 0
+    }
+    report_dict_dl_std = {
+        "0": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "1": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "2": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "3": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "4": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "5": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "6": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "7": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "8": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "9": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "10": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "macro avg": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "weighted avg": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "samples avg": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "accuracy_score": []
+    }
+    report_dict_ximl = {
+        "0": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "1": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "2": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "3": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "4": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "5": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "6": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "7": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "8": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "9": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "10": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "macro avg": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "weighted avg": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "samples avg": {
+            "precision": 0,
+            "recall": 0,
+            "f1-score": 0,
+            "support": 0
+        },
+        "accuracy_score": 0
+    }
+    report_dict_ximl_std = {
+        "0": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "1": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "2": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "3": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "4": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "5": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "6": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "7": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "8": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "9": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "10": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "macro avg": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "weighted avg": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "samples avg": {
+            "precision": [],
+            "recall": [],
+            "f1-score": [],
+            "support": []
+        },
+        "accuracy_score": []
+    }
+    explanation_score_dict_dl_std = {}
+    explanation_score_dict_ximl_std = {}
+    explanation_score_dict_dl_mean = {
+        "high_activated_right_pixels": 0,
+        "high_activated_wrong_pixels": 0,
+        "explanation_score": 0
+    }
+    explanation_score_dict_ximl_mean = {
+        "high_activated_right_pixels": 0,
+        "high_activated_wrong_pixels": 0,
+        "explanation_score": 0
+    }
+    file_list = []
+
+    for i, (root, dirs, files) in enumerate(os.walk("./runs")):
+        if i == 0:
+            for file in files:
+                file_list.append(file)
+        else:
+            continue
+    count_dl = 0
+    count_ximl = 0
+    count_r_dl = 0
+    count_r_ximl = 0
+    score_dl_std_list = [[], [], []]
+    score_ximl_std_list = [[], [], []]
+    for json_file in file_list:
+        if "score_dl" in json_file:
+            with open("./runs/" + json_file) as json_data:
+                d = json.load(json_data)
+                explanation_score_dict_dl_mean[
+                    "high_activated_right_pixels"
+                ] += d["high_activated_right_pixels"]
+                score_dl_std_list[0].append(d["high_activated_right_pixels"])
+                explanation_score_dict_dl_mean[
+                    "high_activated_wrong_pixels"
+                ] += d["high_activated_wrong_pixels"]
+                score_dl_std_list[1].append(d["high_activated_wrong_pixels"])
+                explanation_score_dict_dl_mean[
+                    "explanation_score"
+                ] += d["explanation_score"]
+                score_dl_std_list[2].append(d["explanation_score"])
+                count_dl += 1
+        elif "score_ximl" in json_file:
+            with open("./runs/" + json_file) as json_data:
+                d = json.load(json_data)
+                explanation_score_dict_ximl_mean[
+                    "high_activated_right_pixels"
+                ] += d["high_activated_right_pixels"]
+                score_ximl_std_list[0].append(d["high_activated_right_pixels"])
+                explanation_score_dict_ximl_mean[
+                    "high_activated_wrong_pixels"
+                ] += d["high_activated_wrong_pixels"]
+                score_ximl_std_list[1].append(d["high_activated_wrong_pixels"])
+                explanation_score_dict_ximl_mean[
+                    "explanation_score"
+                ] += d["explanation_score"]
+                score_ximl_std_list[2].append(d["explanation_score"])
+                count_ximl += 1
+        elif "report_common" in json_file:
+            with open("./runs/" + json_file) as json_data:
+                d = json.load(json_data)
+                for i in range(11):
+                    report_dict_dl[str(i)]["precision"] += d[str(i)]["precision"]
+                    report_dict_dl_std[str(i)]["precision"].append(d[str(i)]["precision"])
+                    report_dict_dl[str(i)]["recall"] += d[str(i)]["recall"]
+                    report_dict_dl_std[str(i)]["recall"].append(d[str(i)]["recall"])
+                    report_dict_dl[str(i)]["f1-score"] += d[str(i)]["f1-score"]
+                    report_dict_dl_std[str(i)]["f1-score"].append(d[str(i)]["f1-score"])
+                    report_dict_dl[str(i)]["support"] += d[str(i)]["support"]
+                    report_dict_dl_std[str(i)]["support"].append(d[str(i)]["support"])
+                report_dict_dl["macro avg"]["precision"] += d["macro avg"]["precision"]
+                report_dict_dl_std["macro avg"]["precision"].append(d["macro avg"]["precision"])
+                report_dict_dl["macro avg"]["recall"] += d["macro avg"]["recall"]
+                report_dict_dl_std["macro avg"]["recall"].append(d["macro avg"]["recall"])
+                report_dict_dl["macro avg"]["f1-score"] += d["macro avg"]["f1-score"]
+                report_dict_dl_std["macro avg"]["f1-score"].append(d["macro avg"]["f1-score"])
+                report_dict_dl["macro avg"]["support"] += d["macro avg"]["support"]
+                report_dict_dl_std["macro avg"]["support"].append(d["macro avg"]["support"])
+                report_dict_dl["weighted avg"]["precision"] += d["weighted avg"]["precision"]
+                report_dict_dl_std["weighted avg"]["precision"].append(d["weighted avg"]["precision"])
+                report_dict_dl["weighted avg"]["recall"] += d["weighted avg"]["recall"]
+                report_dict_dl_std["weighted avg"]["recall"].append(d["weighted avg"]["recall"])
+                report_dict_dl["weighted avg"]["f1-score"] += d["weighted avg"]["f1-score"]
+                report_dict_dl_std["weighted avg"]["f1-score"].append(d["weighted avg"]["f1-score"])
+                report_dict_dl["weighted avg"]["support"] += d["weighted avg"]["support"]
+                report_dict_dl_std["weighted avg"]["support"].append(d["weighted avg"]["support"])
+                report_dict_dl["samples avg"]["precision"] += d["samples avg"]["precision"]
+                report_dict_dl_std["samples avg"]["precision"].append(d["samples avg"]["precision"])
+                report_dict_dl["samples avg"]["recall"] += d["samples avg"]["recall"]
+                report_dict_dl_std["samples avg"]["recall"].append(d["samples avg"]["recall"])
+                report_dict_dl["samples avg"]["f1-score"] += d["samples avg"]["f1-score"]
+                report_dict_dl_std["samples avg"]["f1-score"].append(d["samples avg"]["f1-score"])
+                report_dict_dl["samples avg"]["support"] += d["samples avg"]["support"]
+                report_dict_dl_std["samples avg"]["support"].append(d["samples avg"]["support"])
+                report_dict_dl["accuracy_score"] += d["accuracy_score"]
+                report_dict_dl_std["accuracy_score"].append(d["accuracy_score"])
+                count_r_dl += 1
+        elif "report_ximl" in json_file:
+            with open("./runs/" + json_file) as json_data:
+                d = json.load(json_data)
+                for i in range(11):
+                    report_dict_ximl[str(i)]["precision"] += d[str(i)]["precision"]
+                    report_dict_ximl_std[str(i)]["precision"].append(d[str(i)]["precision"])
+                    report_dict_ximl[str(i)]["recall"] += d[str(i)]["recall"]
+                    report_dict_ximl_std[str(i)]["recall"].append(d[str(i)]["recall"])
+                    report_dict_ximl[str(i)]["f1-score"] += d[str(i)]["f1-score"]
+                    report_dict_ximl_std[str(i)]["f1-score"].append(d[str(i)]["f1-score"])
+                    report_dict_ximl[str(i)]["support"] += d[str(i)]["support"]
+                    report_dict_ximl_std[str(i)]["support"].append(d[str(i)]["support"])
+                report_dict_ximl["macro avg"]["precision"] += d["macro avg"]["precision"]
+                report_dict_ximl_std["macro avg"]["precision"].append(d["macro avg"]["precision"])
+                report_dict_ximl["macro avg"]["recall"] += d["macro avg"]["recall"]
+                report_dict_ximl_std["macro avg"]["recall"].append(d["macro avg"]["recall"])
+                report_dict_ximl["macro avg"]["f1-score"] += d["macro avg"]["f1-score"]
+                report_dict_ximl_std["macro avg"]["f1-score"].append(d["macro avg"]["f1-score"])
+                report_dict_ximl["macro avg"]["support"] += d["macro avg"]["support"]
+                report_dict_ximl_std["macro avg"]["support"].append(d["macro avg"]["support"])
+                report_dict_ximl["weighted avg"]["precision"] += d["weighted avg"]["precision"]
+                report_dict_ximl_std["weighted avg"]["precision"].append(d["weighted avg"]["precision"])
+                report_dict_ximl["weighted avg"]["recall"] += d["weighted avg"]["recall"]
+                report_dict_ximl_std["weighted avg"]["recall"].append(d["weighted avg"]["recall"])
+                report_dict_ximl["weighted avg"]["f1-score"] += d["weighted avg"]["f1-score"]
+                report_dict_ximl_std["weighted avg"]["f1-score"].append(d["weighted avg"]["f1-score"])
+                report_dict_ximl["weighted avg"]["support"] += d["weighted avg"]["support"]
+                report_dict_ximl_std["weighted avg"]["support"].append(d["weighted avg"]["support"])
+                report_dict_ximl["samples avg"]["precision"] += d["samples avg"]["precision"]
+                report_dict_ximl_std["samples avg"]["precision"].append(d["samples avg"]["precision"])
+                report_dict_ximl["samples avg"]["recall"] += d["samples avg"]["recall"]
+                report_dict_ximl_std["samples avg"]["recall"].append(d["samples avg"]["recall"])
+                report_dict_ximl["samples avg"]["f1-score"] += d["samples avg"]["f1-score"]
+                report_dict_ximl_std["samples avg"]["f1-score"].append(d["samples avg"]["f1-score"])
+                report_dict_ximl["samples avg"]["support"] += d["samples avg"]["support"]
+                report_dict_ximl_std["samples avg"]["support"].append(d["samples avg"]["support"])
+                report_dict_ximl["accuracy_score"] += d["accuracy_score"]
+                report_dict_ximl_std["accuracy_score"].append(d["accuracy_score"])
+                count_r_ximl += 1
+        else:
+            pass
+    explanation_score_dict_dl_mean = {
+        k: v / count_dl for k, v in explanation_score_dict_dl_mean.items()
+    }
+    explanation_score_dict_ximl_mean = {
+        k: v / count_ximl for k, v in explanation_score_dict_ximl_mean.items()
+    }
+    with open("./runs/explanation_score_dl_mean_" +
+              dt.strftime(dt.now(), "%Y%m%d%H%M%S") + ".json", "w") as f:
+        json.dump(explanation_score_dict_dl_mean, f, indent=2)
+    with open("./runs/explanation_score_ximl_mean_" +
+              dt.strftime(dt.now(), "%Y%m%d%H%M%S") + ".json", "w") as f:
+        json.dump(explanation_score_dict_ximl_mean, f, indent=2)
+
+    explanation_score_dict_dl_std[
+        "high_activated_right_pixels_std"
+    ] = np.std(np.array(score_dl_std_list[0]))
+    explanation_score_dict_dl_std[
+        "high_activated_wrong_pixels_std"
+    ] = np.std(np.array(score_dl_std_list[1]))
+    explanation_score_dict_dl_std[
+        "explanation_score_std"
+    ] = np.std(np.array(score_dl_std_list[2]))
+
+    explanation_score_dict_ximl_std[
+        "high_activated_right_pixels_std"
+    ] = np.std(np.array(score_ximl_std_list[0]))
+    explanation_score_dict_ximl_std[
+        "high_activated_wrong_pixels_std"
+    ] = np.std(np.array(score_ximl_std_list[1]))
+    explanation_score_dict_ximl_std[
+        "explanation_score_std"
+    ] = np.std(np.array(score_ximl_std_list[2]))
+    with open("./runs/explanation_score_dl_std_" +
+              dt.strftime(dt.now(), "%Y%m%d%H%M%S") + ".json", "w") as f:
+        json.dump(explanation_score_dict_dl_std, f, indent=2)
+    with open("./runs/explanation_score_ximl_std_" +
+              dt.strftime(dt.now(), "%Y%m%d%H%M%S") + ".json", "w") as f:
+        json.dump(explanation_score_dict_ximl_std, f, indent=2)
+
+    for k, v in report_dict_dl.items():
+        if k != "accuracy_score":
+            for ki, vi in v.items():
+                report_dict_dl[k][ki] /= count_r_dl
+        else:
+            report_dict_dl[k] /= count_r_dl
+    with open("./runs/report_dl_mean_" +
+              dt.strftime(dt.now(), "%Y%m%d%H%M%S") + ".json", "w") as f:
+        json.dump(report_dict_dl, f, indent=2)
+
+    for k, v in report_dict_ximl.items():
+        if k != "accuracy_score":
+            for ki, vi in v.items():
+                report_dict_ximl[k][ki] /= count_r_ximl
+        else:
+            report_dict_ximl[k] /= count_r_ximl
+    with open("./runs/report_ximl_mean_" +
+              dt.strftime(dt.now(), "%Y%m%d%H%M%S") + ".json", "w") as f:
+        json.dump(report_dict_ximl, f, indent=2)
+
+    for k, v in report_dict_dl_std.items():
+        if k != "accuracy_score":
+            for ki, vi in v.items():
+                report_dict_dl_std[k][ki] = np.std(np.array(report_dict_dl_std[k][ki]))
+        else:
+            report_dict_dl_std[k] = np.std(np.array(report_dict_dl_std[k]))
+    with open("./runs/report_dl_std_" +
+              dt.strftime(dt.now(), "%Y%m%d%H%M%S") + ".json", "w") as f:
+        json.dump(report_dict_dl_std, f, indent=2)
+
+    for k, v in report_dict_ximl_std.items():
+        if k != "accuracy_score":
+            for ki, vi in v.items():
+                report_dict_ximl_std[k][ki] = np.std(np.array(report_dict_ximl_std[k][ki]))
+        else:
+            report_dict_ximl_std[k] = np.std(np.array(report_dict_ximl_std[k]))
+    with open("./runs/report_ximl_std_" +
+              dt.strftime(dt.now(), "%Y%m%d%H%M%S") + ".json", "w") as f:
+        json.dump(report_dict_ximl_std, f, indent=2)

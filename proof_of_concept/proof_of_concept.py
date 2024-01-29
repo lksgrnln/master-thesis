@@ -5,6 +5,7 @@ import numpy as np
 import torch.nn as nn
 from utils import test
 from utils import train
+from pathlib import Path
 from resnet18 import ResNet
 from utils import train_ximl
 from torchvision import transforms
@@ -12,11 +13,17 @@ from utils import test_explanations
 from dataset import MultiLabelMNIST
 from model import MultiLabelClassifier
 from torch.utils.data import DataLoader
+from utils import mean_and_standard_deviation
 
 
 torch.manual_seed(64)
 random.seed(64)
 np.random.seed(64)
+
+if not Path("./models").is_dir():
+    Path("./models").mkdir()
+if not Path("./runs").is_dir():
+    Path("./runs").mkdir()
 
 parser = argparse.ArgumentParser(description="XIML execution script.")
 parser.add_argument(
@@ -74,6 +81,13 @@ parser.add_argument(
     action="store_true",
     help="Sequential processing with XIML fine-tuning (default: %(default)s)"
 )
+parser.add_argument(
+    "-m_std",
+    "--m_std",
+    default=False,
+    action="store_true",
+    help="Compute mean and standard deviation over model ensemble (default: %(default)s)"
+)
 
 args = parser.parse_args()
 
@@ -118,7 +132,8 @@ if args.sequential:
     test(model, multilabel_mnist_test_loader, device, 'common_dl')
     test_explanations(model, multilabel_mnist_test_loader,
                       device, 'number of high activated pixels', 'dl')
-    train_ximl(model, epochs_ximl, optimizer_ximl, multilabel_mnist_train_loader, device)
+    train_ximl(model, epochs_ximl, optimizer_ximl,
+               multilabel_mnist_train_loader, device, args.model)
     test(model, multilabel_mnist_test_loader, device, 'ximl_dl')
     test_explanations(model, multilabel_mnist_test_loader,
                       device, 'number of high activated pixels', 'ximl')
@@ -127,7 +142,11 @@ else:
     test(model, multilabel_mnist_test_loader, device, 'common_dl')
     test_explanations(model, multilabel_mnist_test_loader,
                       device, 'number of high activated pixels', 'dl')
-    train_ximl(model_ximl, epochs_ximl, optimizer_ximl, multilabel_mnist_train_loader, device)
+    train_ximl(model_ximl, epochs_ximl, optimizer_ximl,
+               multilabel_mnist_train_loader, device, args.model)
     test(model_ximl, multilabel_mnist_test_loader, device, 'ximl_dl')
     test_explanations(model_ximl, multilabel_mnist_test_loader,
                       device, 'number of high activated pixels', 'ximl')
+
+if args.m_std:
+    mean_and_standard_deviation()
