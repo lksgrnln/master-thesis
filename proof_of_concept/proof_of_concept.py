@@ -35,14 +35,14 @@ parser.add_argument(
 parser.add_argument(
         "-e",
         "--epochs",
-        default=100,
+        default=20,
         type=int,
         help="Number of epochs (default: %(default)s)",
 )
 parser.add_argument(
         "-e_ximl",
         "--epochs_ximl",
-        default=10,
+        default=20,
         type=int,
         help="Number of ximl epochs (default: %(default)s)",
 )
@@ -54,8 +54,8 @@ parser.add_argument(
         help="Learning rate (default: %(default)s)",
 )
 parser.add_argument(
-        "-lr_ximl",
-        "--learning_rate_ximl",
+        "-ximl_lr",
+        "--ximl_learning_rate",
         type=float,
         default=1e-3,
         help="XIML learning rate (default: %(default)s)",
@@ -113,7 +113,7 @@ model_ximl.load_state_dict(model.state_dict())
 #                                       map_location=torch.device('cpu')
 #                                       ))
 optimizer_ximl = torch.optim.Adam(model_ximl.parameters(),
-                                  lr=args.learning_rate_ximl,
+                                  lr=args.learning_rate,
                                   weight_decay=args.weight_decay)
 epochs = args.epochs
 epochs_ximl = args.epochs_ximl
@@ -133,7 +133,7 @@ if args.sequential:
     test_explanations(model, multilabel_mnist_test_loader,
                       device, 'number of high activated pixels', 'dl')
     train_ximl(model, epochs_ximl, optimizer,
-               multilabel_mnist_train_loader, device, args.model)
+               multilabel_mnist_train_loader, device, args.model, args.ximl_learning_rate)
     test(model, multilabel_mnist_test_loader, device, 'ximl_dl')
     test_explanations(model, multilabel_mnist_test_loader,
                       device, 'number of high activated pixels', 'ximl')
@@ -143,7 +143,7 @@ else:
     test_explanations(model, multilabel_mnist_test_loader,
                       device, 'number of high activated pixels', 'dl')
     train_ximl(model_ximl, epochs_ximl, optimizer_ximl,
-               multilabel_mnist_train_loader, device, args.model)
+               multilabel_mnist_train_loader, device, args.model, args.ximl_learning_rate)
     test(model_ximl, multilabel_mnist_test_loader, device, 'ximl_dl')
     test_explanations(model_ximl, multilabel_mnist_test_loader,
                       device, 'number of high activated pixels', 'ximl')

@@ -141,7 +141,8 @@ def rrr(model, sample,
         prediction, target_vector,
         target_1, target_2,
         mask_1, mask_2,
-        device, model_type):
+        device, model_type,
+        ximl_lr):
     if model_type == 'MLC':
         _model = MultiLabelClassifier().to(device)
     else:
@@ -177,6 +178,6 @@ def rrr(model, sample,
                                  (gradient_tensor_2_positive * mask_2 * log_prob_matrix_2)**2 +
                                  (gradient_tensor_2_negative * mask_1 * log_prob_matrix_2)**2)
 
-    loss = prediction_loss + 1e-1 * (explanation_loss / len(sample))
+    loss = prediction_loss + ximl_lr * (explanation_loss / len(sample))
 
-    return loss, prediction_loss, 1e-1 * (explanation_loss / len(sample))
+    return loss, prediction_loss, ximl_lr * (explanation_loss / len(sample))

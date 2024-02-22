@@ -50,7 +50,7 @@ def train(_model, epochs, optimizer, loss_function, data_loader, device):
     print('finished common training')
 
 
-def train_ximl(_model, epochs, optimizer, data_loader, device, model_type):
+def train_ximl(_model, epochs, optimizer, data_loader, device, model_type, ximl_lr):
     num_epochs = epochs
     log = []
     training_loss_per_epoch = {}
@@ -82,7 +82,7 @@ def train_ximl(_model, epochs, optimizer, data_loader, device, model_type):
                 prediction.to(device), target_vector.to(device),
                 first_target.to(device), second_target.to(device),
                 first_mask.to(device), second_mask.to(device),
-                device, model_type
+                device, model_type, ximl_lr
             )
             loss.backward()
             optimizer.step()
