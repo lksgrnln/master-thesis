@@ -11,9 +11,11 @@ from utils import train_ximl
 from torchvision import transforms
 from utils import test_explanations
 from dataset import MultiLabelMNIST
+from utils import train_measure_ximl
 from model import MultiLabelClassifier
 from torch.utils.data import DataLoader
 from utils import mean_and_standard_deviation
+
 
 
 torch.manual_seed(64)
@@ -88,6 +90,13 @@ parser.add_argument(
     action="store_true",
     help="Compute mean and standard deviation over model ensemble (default: %(default)s)"
 )
+parser.add_argument(
+    "-msr_ximl",
+    "--msr_ximl",
+    default=False,
+    action="store_true",
+    help="Measure RR loss for dl training (default: %(default)s)"
+)
 
 args = parser.parse_args()
 
@@ -136,6 +145,17 @@ if args.sequential:
                multilabel_mnist_train_loader, device, args.model, args.ximl_learning_rate)
     test(model, multilabel_mnist_test_loader, device, 'ximl_dl')
     test_explanations(model, multilabel_mnist_test_loader,
+                      device, 'number of high activated pixels', 'ximl')
+elif args.msr_ximl:
+    train_measure_ximl(model, epochs, optimizer, loss_function, multilabel_mnist_train_loader, device,
+                       args.model, args.ximl_learning_rate)
+    test(model, multilabel_mnist_test_loader, device, 'common_dl')
+    test_explanations(model, multilabel_mnist_test_loader,
+                      device, 'number of high activated pixels', 'dl')
+    train_ximl(model_ximl, epochs_ximl, optimizer_ximl,
+               multilabel_mnist_train_loader, device, args.model, args.ximl_learning_rate)
+    test(model_ximl, multilabel_mnist_test_loader, device, 'ximl_dl')
+    test_explanations(model_ximl, multilabel_mnist_test_loader,
                       device, 'number of high activated pixels', 'ximl')
 else:
     train(model, epochs, optimizer, loss_function, multilabel_mnist_train_loader, device)

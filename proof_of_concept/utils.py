@@ -50,6 +50,67 @@ def train(_model, epochs, optimizer, loss_function, data_loader, device):
     print('finished common training')
 
 
+def train_measure_ximl(_model, epochs, optimizer, loss_function,
+                       data_loader, device, model_type, ximl_lr):
+    num_epochs = epochs
+    log = []
+    training_loss_per_epoch = {}
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10)
+    _model.train()
+
+    for i in range(num_epochs):
+
+        running_loss = 0
+        running_prediction_loss = 0
+        running_explanation_loss = 0
+        for j, data in enumerate(data_loader):
+
+            sample, target_vector, \
+                first_target, second_target, \
+                first_mask, second_mask = data
+            optimizer.zero_grad()
+
+            prediction = _model(sample.to(device))
+#             loss, prediction_loss, explanation_loss = rrr_multilabel_loss(
+#                 _model, sample.to(device),
+#                 prediction.to(device), target_vector.to(device),
+#                 first_target.to(device), second_target.to(device),
+#                 first_mask.to(device), second_mask.to(device),
+#                 device
+#             )
+            loss = loss_function(prediction, target_vector.to(device))
+            loss_rrr, prediction_loss, explanation_loss = rrr(
+                _model, sample.to(device),
+                prediction.to(device), target_vector.to(device),
+                first_target.to(device), second_target.to(device),
+                first_mask.to(device), second_mask.to(device),
+                device, model_type, ximl_lr
+            )
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss_rrr.item()
+            running_prediction_loss += prediction_loss.item()
+            running_explanation_loss += explanation_loss.item()
+        scheduler.step(running_loss / len(data_loader))
+        training_loss_per_epoch[i] = running_loss / len(data_loader), \
+            running_prediction_loss / len(data_loader), \
+            running_explanation_loss / len(data_loader)
+        log.append('Epoch ' + str(i) + ' RRR-Loss: ' + str(running_loss / len(data_loader)) +
+                   '; Prediction Loss: ' + str(running_prediction_loss / len(data_loader)) + '\n')
+        print('Epoch ' + str(i) + ' RRR-Loss: ' + str(running_loss / len(data_loader)) +
+              '; Prediction Loss: ' + str(running_prediction_loss / len(data_loader)) +
+              '; Learning rate: ' + str(optimizer.defaults['lr']))
+    torch.save(_model.state_dict(), './models/classifier_dl_output_11_measure_ximl_' +
+               dt.strftime(dt.now(), "%Y%m%d%H%M%S") + '.pth')
+    with open(
+            "./runs/training_loss_dl_measure_ximl_" +
+            dt.strftime(dt.now(), "%Y%m%d%H%M%S") +
+            ".json", "w") as outfile:
+        json.dump(training_loss_per_epoch, outfile, indent=2)
+    print('finished dl training measure ximl')
+
+
 def train_ximl(_model, epochs, optimizer, data_loader, device, model_type, ximl_lr):
     num_epochs = epochs
     log = []
